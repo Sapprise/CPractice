@@ -9,4 +9,5 @@
 using namespace std;
 int main (0 {
     cout << "hello haizei" ;
+	cout << "I wil study c++ " ;
 })
