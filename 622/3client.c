@@ -91,6 +91,7 @@ void *ball() {
             move(length[1], length[2]);
             addstr(blank);
         }
+        refresh();
     }
     return 0;
 }
