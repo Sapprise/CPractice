@@ -7,7 +7,8 @@
 
 #include<iostream>
 using namespace std;
-int main (0 {
+int main () {
     cout << "hello haizei" ;
 	cout << "I wil study c++ " ;
-})
+    return 0;
+} 

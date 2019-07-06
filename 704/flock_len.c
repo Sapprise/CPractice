@@ -9,11 +9,12 @@
 #include <sys/file.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
-
-#define MAX 1000
-#define LIN 10
+#define MAX 10000
+#define LIN 20
 
 void get_num(long long *num, char *file) {
     FILE *fp = fopen(file, "r");
@@ -74,7 +75,9 @@ int main() {
     } 
     fclose(fp);
     fclose(fp_res);
-    sleep(3);
+    for (int i = 0; i < LIN; i++) {
+        waitpid(-1, NULL, 0);
+    }
     long long result;
     get_num(&result, "res");
     printf("%lld\n", result);
