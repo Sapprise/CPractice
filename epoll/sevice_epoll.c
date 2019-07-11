@@ -11,9 +11,9 @@
 #define MAX_EVENTS 10
 
 int main() {
-    int sock_listen, conn_sock[1024], nfds, epollfd;
+    int sock_listen, conn_sock, nfds, epollfd;
     struct epoll_event ev, events[MAX_EVENTS];
-    char ip_addr[20] = "192.168.2.93";
+    char ip_addr[20] = "127.0.0.1";
     sock_listen = startup(ip_addr, 7777);
     
     epollfd = epoll_create1(0);
@@ -29,8 +29,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    char buf[1024][1024];
-    int con = 1;
+    char buf[100][1024];
     memset(buf, 0, sizeof(buf));
     for(;;) {
         nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
@@ -38,40 +37,43 @@ int main() {
             perror("epoll_wait");
             exit(EXIT_FAILURE);
         }
-        for (int n = 0; n < nfds; ++n) {
-
+        for (int n = 0; n < nfds; n++) {
             if (events[n].data.fd == sock_listen) {
-                conn_sock[con] = my_accept(sock_listen);
-                if (conn_sock[con] == -1) {
+                conn_sock = my_accept(sock_listen);
+                if (conn_sock == -1) {
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                printf("%d\n", conn_sock[con]);
+                printf("%d\n", conn_sock);
                 ev.events = EPOLLIN;
-                ev.data.fd = conn_sock[con];
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock[con], &ev) == -1) {
+                ev.data.fd = conn_sock;
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1) {
                     perror("epoll_ctl: conn_sock");
                     exit(EXIT_FAILURE);
                 }
-                conn_sock[0] = con;
-                con++;
-            }
-            for (int i = 1; i <= conn_sock[0]; i++) {
-            if (events[n].data.fd == conn_sock[i]) {
+            } else {
                 if (events[n].events == EPOLLIN) {
-                read(conn_sock[i], buf[conn_sock[i]], 1024);
+                read(events[n].data.fd, buf[events[n].data.fd], 1024);
+                printf("EPOLLIN conn_sock = %d: %s\n", events[n].data.fd ,buf[events[n].data.fd]);
+
                 ev.events = EPOLLOUT;
-                epoll_ctl(epollfd, EPOLL_CTL_MOD, conn_sock[i], &ev);
-                printf("EPOLLIN\n");
+                ev.data.fd = events[n].data.fd;
+                    if (epoll_ctl(epollfd, EPOLL_CTL_MOD, events[n].data.fd, &ev) == -1) {
+                        perror("epoll_ctl: EPOLLOUT");
+                    }
                 } else if (events[n].events == EPOLLOUT){
-                printf("EPOLLOUT\n");
-                write(conn_sock[i], buf[conn_sock[i]], strlen(buf[conn_sock[i]]));
-                memset(buf[conn_sock[i]], 0, 1024);
+                printf("EPOLLPOUT conn_sock = %d: %s\n", events[n].data.fd ,buf[events[n].data.fd]);
+                write(events[n].data.fd, buf[events[n].data.fd], strlen(buf[events[n].data.fd]));
+                memset(buf[events[n].data.fd], 0, sizeof(buf[events[n].data.fd]));
+
                 ev.events = EPOLLIN;
-                epoll_ctl(epollfd, EPOLL_CTL_MOD, conn_sock[i], &ev);    
+                ev.data.fd = events[n].data.fd;
+                    if (epoll_ctl(epollfd, EPOLL_CTL_MOD, events[n].data.fd, &ev) == -1) {
+                        perror("epoll_clt : EPOLLIN");
+                    }
+            
                 }
             }
-            }    
         }
     }
 
