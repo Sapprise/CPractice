@@ -54,4 +54,4 @@ _now_time_
 _load_
 _cpu_use_    
 _find_temperature
-echo "${time} ${load1} ${load2} ${load3} ${cpu} ${Tt} ${jigao}"
+echo "${time} ${load1} ${load2} ${load3} ${cpu} ${Tt}℃ ${jigao}"
