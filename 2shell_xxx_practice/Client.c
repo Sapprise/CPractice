@@ -74,12 +74,11 @@ int main(int argc, char *argv[]) {
         get_who_conf(argv[1], ip_master);
         get_who_conf(argv[1], port_master);
         //连接master端
-        int port = atoi(port_master);
-        int master_socket = socket_connect(ip_master, port); 
-        
+        //int port = atoi(port_master);
+        //int master_socket = socket_connect(ip_master, port); 
+        //printf("%d\n", master_socket); 
         lister_master(argv[1]);
 
-        exit(0);
     } 
     if (pid > 0) {
         char file[50] = {0};
@@ -87,7 +86,10 @@ int main(int argc, char *argv[]) {
         send_information(file);
 
     }
-
+    while (1) {
+        int i= 1;
+        i = i % 10;
+    }
     return 0;
 }
 

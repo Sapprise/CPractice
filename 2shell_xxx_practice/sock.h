@@ -19,7 +19,7 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
-
+#include <errno.h>
 int socket_fixed(const char * , int); // 服务器固定套接字
 int socket_connect(char *, int); //客户端请求连接
 int my_accept(int); //服务器监听连接
@@ -85,7 +85,7 @@ int socket_connect(char *host, int port) {
 }
 
 int epoll_socket_connect(int port, char *host) {
-	int sockfd, retval;
+    int sockfd, ret;
 	struct sockaddr_in dest_addr;
     struct timeval *time;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -98,28 +98,39 @@ int epoll_socket_connect(int port, char *host) {
 	dest_addr.sin_addr.s_addr = inet_addr(host);
 
     fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK);
-    //unsigned long i = 1;
-    //ioctl(sockfd, FIONBIO, &i);
+    unsigned long i = 1;
+    ioctl(sockfd, FIONBIO, &i);
 
     struct epoll_event ev, events[10];
-    int nfds, epollfd;
+    int nfds, epollfd, error = -1, len;
+    len = sizeof(error);
+
     epollfd = epoll_create(2);
     ev.events = EPOLLOUT;
     ev.data.fd = sockfd;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev);
-    connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    nfds = epoll_wait(epollfd, events, 1, 100);
-
-    if (nfds == -1) {
-        perror("epoll_wait()");
-        return -1;
-    } else if (nfds > 0){
-	    return sockfd;
-    } else {
-        printf("connect fail!");
-        return -1;
-    }
+    nfds = connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    nfds = epoll_wait(epollfd, events, 2, 100);
+        if (nfds == -1) {
+            perror("epoll_wait()");
+            ret = -1;
+        } else if (nfds > 0){
+            if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *)&len) < 0) {
+                close(sockfd);
+                ret = -1;
+            } 
+            if (error == 0) {
+                ret = sockfd;
+            } else {
+                close(sockfd);
+                ret = -1;
+            }
+        } else {
+            printf("connect fail!");
+            ret =  -1;
+        }        
     close(epollfd);
+    return ret;
 }
 
 #endif

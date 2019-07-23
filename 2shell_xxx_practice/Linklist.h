@@ -12,7 +12,7 @@
 #include <time.h>
 
 typedef struct ListNode {
-    int data;
+    unsigned int data;
     struct ListNode *next;
 } ListNode;
 
@@ -22,7 +22,7 @@ typedef struct LinkList {
 } LinkList;
 
 //初始化链表节点
-ListNode *init_listnode(int val) {
+ListNode *init_listnode(unsigned int val) {
     ListNode *p = (ListNode *)malloc(sizeof(ListNode));
     p->data = val;
     p->next = NULL;
@@ -54,7 +54,7 @@ void clear_linklist(LinkList *l) {
     return ;
 }
 //在指定位置插入一个节点
-int insert(LinkList *l, int ind, int val) {
+int insert(LinkList *l, int ind, unsigned int val) {
     if (l == NULL) return 0;
     if (ind < 0 || ind > l->length) return 0;
     ListNode *p = &(l->head), *node = init_listnode(val);

@@ -15,8 +15,8 @@
 
 int get_conf(char *file, char *key, char *val);//获取配置文件信息
 void get_who_conf(char *file, char *who);//获取配置文件特定信息
-char *my_inet_ntoa(struct in_addr ,char *); //将无符号整形转化为IP地址
-
+int my_inet_ntoa(unsigned int ,char *); //将无符号整形转化为IP地址
+unsigned int my_inet_atoi(char *); //将ＩＰ转化为无符号整形
 union My_IP {
     unsigned int num;
     struct oneip{
@@ -27,12 +27,28 @@ union My_IP {
     }oneip;
 };
 
-char *my_inet_ntoa(struct in_addr in, char *need_ip) {
+union Ip {
+    unsigned int num;
+    char part[4];
+};
+
+int my_inet_ntoa(unsigned int num_ip, char *need_ip) {
     union My_IP myip;
-    myip.num = in.s_addr;
+    myip.num = num_ip;
     char ip[20] = {0};
-    sprintf(ip,"%d.%d.%d.%d", myip.oneip.c1, myip.oneip.c2, myip.oneip.c3, myip.oneip.c4);
+    sprintf(ip,"%d.%d.%d.%d", myip.oneip.c4, myip.oneip.c3, myip.oneip.c2, myip.oneip.c1);
     strncpy(need_ip, ip, strlen(ip));
+    return 0;
+}
+
+unsigned int my_inet_atoi(char *str_ip) {
+    int num[4];
+    sscanf(str_ip, "%d.%d.%d.%d", num + 3, num + 2, num + 1, num + 0);
+    union Ip ip;
+    for (int i = 3; i >= 0; --i) {
+        ip.part[i] = num[i] & ((1 << 8) - 1);
+    }
+    return ip.num;
 }
 
 void get_who_conf(char *file, char *who) {

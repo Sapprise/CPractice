@@ -1,7 +1,7 @@
-master=192.168.2.93
+master=127.0.0.1
 master_port=7777
-client=192.168.2.93
+client=127.0.0.1
 client_port=8888
 information_port=8800
 ip_client_st=192.168.2.1
-ip_client_end=192.168.2.150
+ip_client_end=192.168.2.51
