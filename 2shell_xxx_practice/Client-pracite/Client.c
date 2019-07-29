@@ -26,7 +26,7 @@ void clear_shell_information(char *infor_file) {  //清空文件写入当前时�
     char buff[Length];
     memset(buff, 0, sizeof(buff));
     fp = popen("hostname", "r");              
-    fd = fopen(infor_file, "a+");
+    fd = fopen(infor_file, "w+");
     fread(buff, 1, Length, fp);
     fwrite(buff, 1, strlen(buff), fd);
     pclose(fp);
@@ -208,15 +208,12 @@ int main(int argc, char *argv[]) {
 
         if (thepid == 0) {
             FILE *fp = fopen("./file_lock.test", "w+");
-            while (1) {
             flock(fp->_fileno, LOCK_EX);
             all_shell(argv[2]);
             flock(fp->_fileno, LOCK_UN);
-            sleep(60);  
-            }        
             fclose(fp);
+            sleep(5);          
         }
-
         if(thepid > 0) {          
             char file[50] = {0};
             strncpy(file, argv[1], strlen(argv[1]));

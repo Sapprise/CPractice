@@ -19,9 +19,86 @@
 #include "2xxx_practice.h"
 #include "Linklist.h"
 
+#define MAX_EVENTS 1000
+#define Length 1024
 char Configurefile[50] = {0};
-
+pthread_mutex_t mut;
 LinkList *Clilist;
+
+struct my_st {
+    char *f;
+    LinkList *List;
+};
+
+
+//监听client连接
+int lister_client(char *file, LinkList *l) {
+    char val[100] = {0};
+    char ip_master[50] = {0}, port_master[20] = {0};
+    strcpy(ip_master, "master");
+    strcpy(port_master, "master_port");
+    get_who_conf(file, ip_master);
+    get_who_conf(file, port_master);
+    int port = atoi(port_master);
+    int listen_socket = socket_fixed(ip_master, port);
+    printf("------监听client端是否连接:-------\n");
+    int epollfd, nfds, conn_sock;
+    struct epoll_event ev, events[MAX_EVENTS];
+    epollfd = epoll_create1(0);
+    if (epollfd == -1) {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
+    }
+    
+    ev.events = EPOLLIN;
+    ev.data.fd = listen_socket;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_socket, &ev) == -1) {
+        perror("epoll_ctl: sock_listen");
+        exit(EXIT_FAILURE);
+    }
+    for(;;) {
+        nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if (nfds == -1) {
+            perror("epoll_wait");
+            exit(EXIT_FAILURE);
+        }
+        for (int n = 0; n < nfds; n++) {
+            if (events[n].data.fd == listen_socket) {
+                conn_sock = my_accept(listen_socket);
+                if (conn_sock == -1) {
+                    perror("my_accept");
+                    exit(EXIT_FAILURE);
+                }
+                pthread_mutex_lock(&mut);  //上锁
+                //将ip插入链表，并关闭连接。（查重）
+                printf("client_socket:%d\n", conn_sock);
+                struct sockaddr_in peerAddr;
+                int peerLen, repeat = 0;
+                unsigned int ip;
+                char ipAddr[INET_ADDRSTRLEN];
+                ListNode *p = l->head.next;
+                peerLen = sizeof(peerAddr);
+                getpeername(conn_sock, (struct sockaddr *)&peerAddr, &peerLen);
+                inet_ntop(AF_INET, &peerAddr.sin_addr, ipAddr, sizeof(ipAddr));
+                printf("%s\n", ipAddr);
+                ip = my_inet_atoi(ipAddr); 
+                while (p) {
+                    if (p->data == ip) {
+                        repeat = 1;
+                        break;
+                    }
+                    p = p->next;
+                }
+                if (repeat == 0) {
+                    insert(l, l->length, ip);
+                } 
+                pthread_mutex_unlock(&mut);                         //解锁
+                close(conn_sock);
+            } 
+        }
+    }
+    return 0;
+}
 
 //无阻塞连接client,等待100毫秒 ok
 int epoll_connect_client(char *ip_client, char *key) {
@@ -30,30 +107,12 @@ int epoll_connect_client(char *ip_client, char *key) {
     get_who_conf(Configurefile, port_client);
     int port = atoi(port_client);
     int sockfd = epoll_socket_connect(port, ip_client);
-    printf("epoll sockfd :%d\n", sockfd);
-    
     return sockfd;
 }
 
-//对所以client进行心跳检测
-int into_list_client(LinkList *l) {
-    char client_st[30] = {0}, client_end[20] = {0};
-    strcpy(client_st, "ip_client_st");
-    strcpy(client_end, "ip_client_end");
-    get_who_conf(Configurefile, client_st);
-    get_who_conf(Configurefile, client_end);
-    unsigned int star, end;
-//将ip转化为无符号整形
-    star = my_inet_atoi(client_st);
-    end = my_inet_atoi(client_end);
-
-    for (unsigned int i = star; i <= end; i++) {
-        if (!insert(l, l->length, i)) {
-            printf("insert fault!\n");
-        }
-    }
-
-//遍历整个链表删除不在线client
+//遍历整个链表删除不在线client ok
+void look_allclient(LinkList *l) {
+    pthread_mutex_lock(&mut);
     ListNode *p = l->head.next, *q = &l->head;
     int allclient = l->length;
     char port[20];
@@ -68,31 +127,139 @@ int into_list_client(LinkList *l) {
         if (client_socket != -1) {
             p = p->next;
             q = q->next;
+            printf("client_heart:%d\n", client_socket);
             close(client_socket);
         } else {
-            printf("%u\n", p->data);
             q->next = p->next;
             free(p);
             l->length -= 1;
             p = q->next;
         }
         memset(str_client_ip, 0, sizeof(str_client_ip));
-        printf("%d\n", l->length);
+        //printf("%d\n", l->length);
+    }
+    pthread_mutex_unlock(&mut);           
+    return ;    
+}
+
+//对client进行心跳检测 ok
+int into_list_client(LinkList *l) {
+    char client_st[30] = {0}, client_end[20] = {0};
+    strcpy(client_st, "ip_client_st");
+    strcpy(client_end, "ip_client_end");
+    get_who_conf(Configurefile, client_st);
+    get_who_conf(Configurefile, client_end);
+    unsigned int star, end;
+
+    star = my_inet_atoi(client_st);            //将ip转化为无符号整形
+    end = my_inet_atoi(client_end);
+
+    pthread_mutex_lock(&mut);
+    for (unsigned int i = star; i <= end; i++) {
+        if ((i % 256 == 0) || (i % 256 == 255)) {
+            continue;
+        }
+        if (!insert(l, l->length, i)) {
+            printf("insert fault!\n");
+        }
+    }
+    pthread_mutex_unlock(&mut);                 
+    printf("-----对client进行心跳检测----------\n");
+    look_allclient(l);
+    
+    while (1) {
+        sleep(5);
+        look_allclient(l);
+        printf("client number:%d\n", l->length);
     }
     return 1;
 }
 
-
-void *look_allclient(LinkList *list) {
-    ListNode *p = list->head.next, *q = &list->head;
-        
+//接收文件
+void receive_files(char *infor_file, int infor_socket) {
+    char str[Length];
+    FILE *fp;
+    fp = fopen(infor_file, "a+");
+    while (1) {
+        memset(str, 0, sizeof(str));
+        int s = read(infor_socket, str, 1);
+        if (s > 0) {
+            printf("%s\n", str);
+            fwrite(str, s, 1, fp);
+        } else if (s == 0) {
+            printf("write end!\n");
+            break;
+        } else {
+            printf("write fail!\n");
+            break;
+        }
+    }
+    fclose(fp);
+    return ;
 }
+
+//向client端请求数据
+void informat_client(char *file, LinkList *l, char *infor_file) {
+    char ip[20] = {0}, my_port[10] = {0};
+    int infor_socket, port;
+    strcpy(my_port, "information_port");
+    get_who_conf(file, my_port);
+    printf("-----开始接收文件-----\n");
+    ListNode *p = l->head.next;
+    
+    pthread_mutex_lock(&mut);
+    while (p) {
+        int port;
+        port = atoi(my_port);
+        printf("%d\n", port);
+        my_inet_ntoa(p->data, ip);
+        infor_socket = socket_connect(ip, port);
+        if (infor_socket) {              //接收文件
+            printf("the file from %s!\n", ip);
+            receive_files(infor_file, infor_socket);
+        } 
+        p = p->next;
+        close(infor_socket);
+    }
+    pthread_mutex_unlock(&mut);
+}
+
+
+void *pthread_lister_client(void *str) {
+    struct my_st *st;
+    st = (struct my_st *)str;
+    char *file;
+    LinkList *l;
+    file = st->f;
+    l = st->List;
+    lister_client(file, l); 
+}
+
+void *pthread_into_list_client(void *str) {
+    struct my_st *st;
+    st = (struct my_st *)str;
+    LinkList *l;
+    l = st->List;
+    into_list_client(l);
+}
+
 
 int main (int argc, char *argv[]) {
     strncpy(Configurefile, argv[1], strlen(argv[1]));
-    char ip[20];
-    strcpy(ip, "127.0.0.1");
-    Clilist = init_linklist();//初始化一个链表
-    into_list_client(Clilist);
+    pthread_mutex_init(&mut, NULL);
+    Clilist = init_linklist();             //初始化一个链表
+    struct my_st str;
+    str.f = Configurefile;
+    str.List = Clilist;
+    pthread_t thr1, thr2;
+    pthread_create(&thr1, NULL, pthread_lister_client, &str);
+    pthread_create(&thr2, NULL, pthread_into_list_client, &str);
+    while (1) {
+        char play = getchar();
+        if (play == 'r') {
+            informat_client(argv[1], Clilist, argv[2]);
+        }
+    }
+    
     return 0;
 }
