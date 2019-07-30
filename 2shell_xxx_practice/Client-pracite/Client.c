@@ -19,26 +19,15 @@
 #include "2xxx_practice.h"
 
 #define Length 1024
+#define SHORT 512
+char filename[7][128] = {0};
+char buff[7][6][SHORT] = {0};
 
-
-void clear_shell_information(char *infor_file) {  //清空文件写入当前时间
+void clear_shell_information(char *infor_file) {  //写入主机名
     FILE *fp, *fd;
     char buff[Length];
     memset(buff, 0, sizeof(buff));
     fp = popen("hostname", "r");              
-    fd = fopen(infor_file, "w+");
-    fread(buff, 1, Length, fp);
-    fwrite(buff, 1, strlen(buff), fd);
-    pclose(fp);
-    fclose(fd);
-    return ;
-}
-
-void shell_information(char *infor_file, char *bash) { //执行一个脚本将信息加入文件
-    FILE *fp, *fd;
-    char buff[Length];
-    memset(buff, 0, sizeof(buff));
-    fp = popen(bash, "r");              
     fd = fopen(infor_file, "a+");
     fread(buff, 1, Length, fp);
     fwrite(buff, 1, strlen(buff), fd);
@@ -47,37 +36,66 @@ void shell_information(char *infor_file, char *bash) { //执行一个脚本将�
     return ;
 }
 
-void all_shell(char *infor_file) {                  //执行所有脚本
+void shell_information(char *infor_file, char *bash, int num, int who) { //执行一个脚本将信息加入文件
+    FILE *fp, *fd;
+    fp = popen(bash, "r");              
+    fread(buff[who][num], 1, SHORT, fp);
+    if (num == 4) {
+        fd = fopen(infor_file, "a+");
+        fwrite(buff[who][0], 1, strlen(buff[who][0]), fd);
+        memset(buff[who][0], 0, sizeof(buff[who][0]));
+        fwrite(buff[who][1], 1, strlen(buff[who][1]), fd);
+        memset(buff[who][1], 0, sizeof(buff[who][1]));
+        fwrite(buff[who][2], 1, strlen(buff[who][2]), fd);
+        memset(buff[who][2], 0, sizeof(buff[who][2]));
+        fwrite(buff[who][3], 1, strlen(buff[who][3]), fd);
+        memset(buff[who][3], 0, sizeof(buff[who][3]));
+        fwrite(buff[who][4], 1, strlen(buff[who][4]), fd);
+        memset(buff[who][4], 0, sizeof(buff[who][4]));
+        fclose(fd);
+    }
+    pclose(fp);
+    return ;
+}
+
+void all_shell(int num) {                  //执行所有脚本
     char bash[50] = {0};
-    clear_shell_information(infor_file);
+
+    //clear_shell_information("./infor_client/Users");
     strcpy(bash, "bash Users.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/Users", bash, num, 0);
 
     memset(bash, 0, sizeof(bash));
+    //clear_shell_information("./infor_client/Proclog");
     strcpy(bash, "bash Proclog.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/Proclog", bash, num, 1);
 
     memset(bash, 0, sizeof(bash));
+    //clear_shell_information("./infor_client/SysInfo");
     strcpy(bash, "bash SysInfo.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/SysInfo", bash, num, 2);
 
     memset(bash, 0, sizeof(bash));
+    //clear_shell_information("./infor_client/MemLog");
     strcpy(bash, "bash MemLog.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/MemLog", bash, num, 3);
 
     memset(bash, 0, sizeof(bash));
+    //clear_shell_information("./infor_client/DiskLog");
     strcpy(bash, "bash DiskLog.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/DiskLog", bash, num, 4);
 
     memset(bash, 0, sizeof(bash));
+    //clear_shell_information("./infor_client/CpuLog");
     strcpy(bash, "bash CpuLog.sh");
-    shell_information(infor_file, bash);
+    shell_information("./infor_client/CpuLog", bash, num, 5);
+
     return ;
 }
 
 
 //给master返回信息
-int send_information(char *file, char *infor_file) {
+int send_information(char *file) {
     char val[100] = {0};
     char ip_client[50] = {0}, port_client[20] = {0};
     strcpy(ip_client, "client");
@@ -96,21 +114,31 @@ int send_information(char *file, char *infor_file) {
         printf("开始传输数据！\n");
         FILE *fp_lock = fopen("./file_lock.test", "w+");
         flock(fp_lock->_fileno, LOCK_EX);
+
         FILE *fp;
         char str[Length];
-        int sread = 1;
-        fp = fopen(infor_file, "rw");
-        while (sread != 0) {
-            memset(str, 0, sizeof(str));
-            sread = fread(str, 1, 1, fp);
-            if (sread > 0) {
-                write(new_socket, str, strlen(str));
-            } 
+        for (int i = 0; i <= 5; i++) {
+            int sread = 1;
+            printf("%s\n", filename[i]);
+            fp = fopen(filename[i], "rw");
+            while (1) {
+                memset(str, 0, sizeof(str));
+                sread = fread(str, 1, 1, fp);
+                if (sread > 0) {
+                    write(new_socket, str, strlen(str));
+                } 
+                if (sread == 0) {
+                    write(new_socket, "#", 1);
+                    break;
+                }
+            }  
+            fclose(fp);
+            fp = fopen(filename[i], "w");
+            fclose(fp);
         }
         printf("read sucesses!\n");
         flock(fp_lock->_fileno, LOCK_UN);
         fclose(fp_lock);
-        fclose(fp);
         close(new_socket);
     }
     return 0;
@@ -137,8 +165,8 @@ int lister_master(char *file, pid_t father_pid) {
     ev.data.fd = listen_socket;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_socket, &ev);
     printf("－－－－接收master端心跳中－－－－！\n");
+    int timeout = 1000 * 10;
     while (1) {
-        int timeout = 1000 * 10;
         nfds = epoll_wait(epollfd, events, 5, timeout);
         if (nfds == -1) {
             perror("epoll_wait");
@@ -147,11 +175,13 @@ int lister_master(char *file, pid_t father_pid) {
         //等待心跳超时
         if (nfds == 0) {
             printf("心跳等待超时！\n");
+            timeout += 1000*10;
             kill(father_pid, SIGUSR1);
         }
         for (int n = 0; n < nfds; n++) {
             int new_socket = my_accept(listen_socket);
             printf("masterheart:%d\n", new_socket);
+            timeout = 1000*10;
             close(new_socket);
          }
     }
@@ -180,7 +210,19 @@ void client_connet_master() {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("参数错误!\n");
+        return 0;
+    }
+
     strcpy(file, argv[1]);
+    strcpy(filename[0], "./infor_client/Users");
+    strcpy(filename[1], "./infor_client/Proclog");
+    strcpy(filename[2], "./infor_client/SysInfo");
+    strcpy(filename[3], "./infor_client/MemLog");
+    strcpy(filename[4], "./infor_client/DiskLog");
+    strcpy(filename[5], "./infor_client/CpuLog");
+
 
     pid_t pid;
     pid = fork();
@@ -208,16 +250,28 @@ int main(int argc, char *argv[]) {
 
         if (thepid == 0) {
             FILE *fp = fopen("./file_lock.test", "w+");
-            flock(fp->_fileno, LOCK_EX);
-            all_shell(argv[2]);
-            flock(fp->_fileno, LOCK_UN);
+            int num = 0;
+            clear_shell_information("./infor_client/Users");
+            clear_shell_information("./infor_client/Proclog");
+            clear_shell_information("./infor_client/SysInfo");
+            clear_shell_information("./infor_client/MemLog");
+            clear_shell_information("./infor_client/DiskLog");
+            clear_shell_information("./infor_client/CpuLog");
+            while (1) {
+                flock(fp->_fileno, LOCK_EX);
+                all_shell(num);
+                flock(fp->_fileno, LOCK_UN);
+                num++;
+                num %= 5; 
+                sleep(30);          //间隔1min执行一次脚本
+            }
             fclose(fp);
-            sleep(5);          
         }
+
         if(thepid > 0) {          
             char file[50] = {0};
             strncpy(file, argv[1], strlen(argv[1]));
-            send_information(file, argv[2]);
+            send_information(file);
         }
     }
     

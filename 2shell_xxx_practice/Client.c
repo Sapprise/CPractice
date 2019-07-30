@@ -21,7 +21,7 @@
 #define Length 1024
 
 
-void clear_shell_information(char *infor_file) {  //清空文件写入当前时间
+void clear_shell_information(char *infor_file) {  //写入主机名
     FILE *fp, *fd;
     char buff[Length];
     memset(buff, 0, sizeof(buff));
@@ -111,6 +111,9 @@ int send_information(char *file, char *infor_file) {
         flock(fp_lock->_fileno, LOCK_UN);
         fclose(fp_lock);
         fclose(fp);
+        fp = fopen(infor_file, "w");
+        fclose(fp);
+
         close(new_socket);
     }
     return 0;
@@ -212,7 +215,7 @@ int main(int argc, char *argv[]) {
             flock(fp->_fileno, LOCK_EX);
             all_shell(argv[2]);
             flock(fp->_fileno, LOCK_UN);
-            sleep(60);  
+            sleep(60 * 5);          //间隔5min执行一次脚本
             }        
             fclose(fp);
         }
