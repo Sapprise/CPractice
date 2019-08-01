@@ -22,6 +22,7 @@
 #define SHORT 512
 char filename[7][128] = {0};
 char buff[7][6][SHORT] = {0};
+int memlog = 0;
 
 void clear_shell_information(char *infor_file) {  //写入主机名
     FILE *fp, *fd;
@@ -39,7 +40,18 @@ void clear_shell_information(char *infor_file) {  //写入主机名
 void shell_information(char *infor_file, char *bash, int num, int who) { //执行一个脚本将信息加入文件
     FILE *fp, *fd;
     fp = popen(bash, "r");              
-    fread(buff[who][num], 1, SHORT, fp);
+
+    if (who == 3) {
+        char mem[10] = {0};  
+        fgets(buff[who][num], SHORT, fp);
+        fgets(mem, 10, fp);
+        //fread(buff[who][num], 1, SHORT, fp);
+        memlog = atoi(mem);
+    } else {
+        fread(buff[who][num], 1, SHORT, fp);
+
+    }
+
     if (num == 4) {
         fd = fopen(infor_file, "a+");
         fwrite(buff[who][0], 1, strlen(buff[who][0]), fd);
@@ -77,7 +89,7 @@ void all_shell(int num) {                  //执行所有脚本
 
     memset(bash, 0, sizeof(bash));
     //clear_shell_information("./infor_client/MemLog");
-    strcpy(bash, "bash MemLog.sh");
+    sprintf(bash, "bash MemLog.sh %d", memlog);
     shell_information("./infor_client/MemLog", bash, num, 3);
 
     memset(bash, 0, sizeof(bash));
@@ -223,7 +235,6 @@ int main(int argc, char *argv[]) {
     strcpy(filename[4], "./infor_client/DiskLog");
     strcpy(filename[5], "./infor_client/CpuLog");
 
-
     pid_t pid;
     pid = fork();
 
@@ -242,8 +253,8 @@ int main(int argc, char *argv[]) {
                 sleep(10);                       
             }
         }        
-
     } 
+
     if (pid > 0) {  //父进程等待传输数据给master端
         pid_t thepid;
         thepid = fork();
@@ -274,8 +285,6 @@ int main(int argc, char *argv[]) {
             send_information(file);
         }
     }
-    
-
     return 0;
 }
 

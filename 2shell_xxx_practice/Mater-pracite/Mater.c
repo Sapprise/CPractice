@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -28,7 +30,7 @@ struct my_st {
 };
 
 char Configurefile[50] = {0};
-char filename[7][64] = {0};
+char filename[128] = {0};
 pthread_mutex_t mut;
 LinkList *Clilist;
 
@@ -177,25 +179,32 @@ int into_list_client(LinkList *l) {
 }
 
 //接收文件
-void receive_files(int infor_socket) {
+void receive_files(int infor_socket, char *ip) {
     char str[Length];
+    char new_filename[7][256] = {0};
     FILE *fp;
+    sprintf(new_filename[0], "%s%s/Users", filename, ip);
+    sprintf(new_filename[1], "%s%s/Proclog", filename, ip);
+    sprintf(new_filename[2], "%s%s/SysInfo", filename, ip);
+    sprintf(new_filename[3], "%s%s/MemLog", filename, ip);
+    sprintf(new_filename[4], "%s%s/DiskLog", filename, ip);
+    sprintf(new_filename[5], "%s%s/CpuLog", filename, ip);
     for (int i = 0; i <= 5; i++) {
-        fp = fopen(filename[i], "a+");
+        fp = fopen(new_filename[i], "a+");
         while (1) {
             memset(str, 0, sizeof(str));
             int s = read(infor_socket, str, 1);
             if (s > 0) {
                 if (str[0] == '#') {
-                    printf("write %s end!\n", filename[i]);
+                    printf("write %s end!\n", new_filename[i]);
                     break;
                 }
                 fwrite(str, s, 1, fp);
             } else if (s == 0) {
-                printf("write %s end!\n", filename[i]);
+                printf("write %s end!\n", new_filename[i]);
                 break;
             } else {
-                printf("write %s fail!\n", filename[i]);
+                printf("write %s fail!\n", new_filename[i]);
                 break;
             }
         }
@@ -216,13 +225,16 @@ void informat_client(char *file, LinkList *l) {
     pthread_mutex_lock(&mut);
     while (p) {
         int port;
+        char dir[128] = {0};
         port = atoi(my_port);
         printf("%d\n", port);
         my_inet_ntoa(p->data, ip);
         infor_socket = socket_connect(ip, port);
         if (infor_socket) {              //接收文件
             printf("the file from %s!\n", ip);
-            receive_files(infor_socket);
+            sprintf(dir, "%s%s", filename, ip);
+            mkdir(dir, 0777);
+            receive_files(infor_socket, ip);
         } 
         p = p->next;
         close(infor_socket);
@@ -258,13 +270,9 @@ int main (int argc, char *argv[]) {
     str.f = Configurefile;
     str.List = Clilist;
     
-    strcpy(filename[0], "./Infor_Mater/Users");
-    strcpy(filename[1], "./Infor_Mater/Proclog");
-    strcpy(filename[2], "./Infor_Mater/SysInfo");
-    strcpy(filename[3], "./Infor_Mater/MemLog");
-    strcpy(filename[4], "./Infor_Mater/DiskLog");
-    strcpy(filename[5], "./Infor_Mater/CpuLog");
-
+    strcpy(filename, "filename");
+    get_who_conf(argv[1], filename);
+    
     pthread_t thr1, thr2;
     pthread_create(&thr1, NULL, pthread_lister_client, &str);
     pthread_create(&thr2, NULL, pthread_into_list_client, &str);

@@ -17,3 +17,4 @@ DyAver=`echo "scale=1;${DyAver}*0.3+${MemAvaPrec}*0.7" | bc`
 NowTime=`date +%Y-%m-%d__%H:%M:%S`
 
 echo "${NowTime} ${MemValue[1]}M ${MemLeft}M ${MemAvaPrec}% ${DyAver}%"
+echo "${DyAver}"

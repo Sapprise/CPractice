@@ -1,7 +1,10 @@
 master=192.168.2.93
 master_port=7777
-client=192.168.1.49
+client=0.0.0.0
 client_port=8877
 information_port=8777
 ip_client_st=192.168.1.30
 ip_client_end=192.168.1.55
+
+
+filename=./Infor_Mater/
