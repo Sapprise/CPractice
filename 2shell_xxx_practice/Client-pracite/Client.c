@@ -20,9 +20,35 @@
 
 #define Length 1024
 #define SHORT 512
+#define THEFILE "Configure"
 char filename[7][128] = {0};
 char buff[7][6][SHORT] = {0};
 int memlog = 0;
+
+
+void udp_recv(char *file, char *str) {
+    char ip_client[20] = {0}, udp_port[20] = {0}, buff[SHORT] = {0};
+    int port, len, sockfd;
+    strcpy(ip_client, "master");
+    strcpy(udp_port, "udp_port");
+    get_who_conf(file, ip_client);
+    get_who_conf(file, udp_port);
+    port = atoi(udp_port);
+    struct sockaddr_in addr;
+    len = sizeof(struct sockaddr_in);
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = inet_addr(ip_client);
+
+    strcpy(buff, str);
+    sendto(sockfd, buff, strlen(buff), 0, (struct sockaddr *)&addr, len);
+    close(sockfd);
+    return ;
+}
+
 
 void clear_shell_information(char *infor_file) {  //写入主机名
     FILE *fp, *fd;
@@ -37,7 +63,8 @@ void clear_shell_information(char *infor_file) {  //写入主机名
     return ;
 }
 
-void shell_information(char *infor_file, char *bash, int num, int who) { //执行一个脚本将信息加入文件
+//执行一个脚本写入信息
+void shell_information(char *infor_file, char *bash, int num, int who) { 
     FILE *fp, *fd;
     fp = popen(bash, "r");              
 
@@ -45,13 +72,27 @@ void shell_information(char *infor_file, char *bash, int num, int who) { //执�
         char mem[10] = {0};  
         fgets(buff[who][num], SHORT, fp);
         fgets(mem, 10, fp);
-        //fread(buff[who][num], 1, SHORT, fp);
         memlog = atoi(mem);
     } else {
         fread(buff[who][num], 1, SHORT, fp);
-
     }
 
+    char keys[10] = {0};
+    strcpy(keys, "warning");
+    if (strstr(buff[who][num], keys) != NULL) {
+        char file[20] = {0}, string[SHORT] = {0};
+        strcpy(file, THEFILE);
+        strncpy(string, buff[who][num], strlen(buff[who][num]));
+        udp_recv(file, string);
+    }
+
+    if (who == 1 && strlen(buff[1][num]) > 20) {
+        char file[20] = {0}, string[SHORT] = {0};
+        strcpy(file, THEFILE);
+        sprintf(string, "恶意进程:%s", buff[1][num]);
+        udp_recv(file, string);
+    }
+                                                                        
     if (num == 4) {
         fd = fopen(infor_file, "a+");
         fwrite(buff[who][0], 1, strlen(buff[who][0]), fd);

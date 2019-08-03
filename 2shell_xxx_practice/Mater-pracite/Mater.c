@@ -34,6 +34,40 @@ char filename[128] = {0};
 pthread_mutex_t mut;
 LinkList *Clilist;
 
+//UDP监听警告
+void lister_udp(char *file) {
+    char udp_port[20] = {0};
+    int sockfd, port;
+    strcpy(udp_port, "udp_port");
+    get_who_conf(file, udp_port);
+    port = atoi(udp_port);
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    char buff[512] = {0};
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("sockket");
+        exit(1);
+    }
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("connect");
+        exit(1);
+    }
+
+    while(1) {
+        bzero(buff, sizeof(buff));
+        recvfrom(sockfd, buff, sizeof(buff), 0, (struct sockaddr*)&addr, &len);
+        printf("－－－－－－警告！警告！－－－－－－－－\n");
+        printf("rectfrom %s  = %s \n", inet_ntoa(addr.sin_addr) , buff);
+    }
+    close(sockfd);
+}
+
+
 //监听client连接
 int lister_client(char *file, LinkList *l) {
     char val[100] = {0};
@@ -261,6 +295,12 @@ void *pthread_into_list_client(void *str) {
     into_list_client(l);
 }
 
+void *pthread_lister_udp(void *str) {
+    struct my_st *st;
+    st = (struct my_st *)str;
+    char *file = st->f;
+    lister_udp(file);
+}
 
 int main (int argc, char *argv[]) {
     strncpy(Configurefile, argv[1], strlen(argv[1]));
@@ -273,9 +313,10 @@ int main (int argc, char *argv[]) {
     strcpy(filename, "filename");
     get_who_conf(argv[1], filename);
     
-    pthread_t thr1, thr2;
+    pthread_t thr1, thr2, thr3;
     pthread_create(&thr1, NULL, pthread_lister_client, &str);
     pthread_create(&thr2, NULL, pthread_into_list_client, &str);
+    pthread_create(&thr3, NULL, pthread_lister_udp, &str);
     while (1) {
         char play = getchar();
         if (play == 'r') {
