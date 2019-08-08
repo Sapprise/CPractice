@@ -5,21 +5,8 @@
 	> Created Time: 2019年07月20日 星期六 17时48分42秒
  ************************************************************************/
 
-#ifndef _LINKLIST_H
-#define _LINKLIST_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include "my_Linklist.h"
 
-typedef struct ListNode {
-    unsigned int data;
-    struct ListNode *next;
-} ListNode;
-
-typedef struct LinkList {
-    ListNode head;
-    int length;
-} LinkList;
 
 //初始化链表节点
 ListNode *init_listnode(unsigned int val) {
@@ -81,4 +68,3 @@ int erase(LinkList *l, int ind) {
     return 1;
 }
 
-#endif

@@ -5,24 +5,7 @@
 	> Created Time: 2019年06月22日 星期六 18时25分41秒
  ************************************************************************/
 
-#ifndef _SOCK_H
-#define _SOCK_H
-
-#include <stdio.h>
-#include <sys/types.h>   
-#include <sys/socket.h>  
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <sys/epoll.h>
-#include <sys/ioctl.h>
-#include <errno.h>
-int socket_fixed(const char * , int); // 服务器固定套接字
-int socket_connect(char *, int); //客户端请求连接
-int my_accept(int); //服务器监听连接
+#include "my_sock.h"
 
 int my_accept(int listen_sock) {
     struct sockaddr_in client;
@@ -139,4 +122,3 @@ int epoll_socket_connect(int port, char *host) {
     return ret;
 }
 
-#endif

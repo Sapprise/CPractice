@@ -5,31 +5,14 @@
 	> Created Time: 2019年06月22日 星期六 18时25分41秒
  ************************************************************************/
 
-#ifndef _SOCK_H
-#define _SOCK_H
-
-#include <stdio.h>
-#include <sys/types.h>   
-#include <sys/socket.h>  
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <sys/epoll.h>
-#include <sys/ioctl.h>
-#include <errno.h>
-int socket_fixed(const char * , int); // 服务器固定套接字
-int socket_connect(char *, int); //客户端请求连接
-int my_accept(int); //服务器监听连接
+#include "my_sock.h"
 
 int my_accept(int listen_sock) {
     struct sockaddr_in client;
     socklen_t len = sizeof(client);
     int new_sock = accept(listen_sock, (struct sockaddr *)&client, &len);
     if (new_sock < 0) {
-        perror("accept()");
+        //perror("accept()");
         close(listen_sock);
         return -1;
     }
@@ -39,8 +22,8 @@ int my_accept(int listen_sock) {
 int socket_fixed(const char* _ip, int _port) {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
-		perror("----sock----fail\n");
-		exit(-1);
+		//perror("----sock----fail\n");
+		return -1;
 	}
 	struct sockaddr_in local;
 	local.sin_family = AF_INET;
@@ -49,20 +32,22 @@ int socket_fixed(const char* _ip, int _port) {
 
     int yes = 1;        //端口重用
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-        perror("setsockopt");
+        //perror("setsockopt");
     }
 
 	if (bind(sock, (struct sockaddr*)&local, sizeof(local)) != 0) {
-		perror("---bind---fail\n");
+		//perror("---bind---fail\n");
 		close(sock);
-		exit(-2);
+        return -1;
+		//exit(-2);
 	}
 	if (listen(sock, 1000) != 0) {
-		perror("----listen----fail\n");
+		//perror("----listen----fail\n");
 		close(sock);
-		exit(-1);
+        return -1;
+		//exit(-1);
 	}
-    printf("bind success!\n");
+    //printf("bind success!\n");
 	return sock;		
 }
 
@@ -70,7 +55,7 @@ int socket_connect(char *host, int port) {
 	int sockfd;
 	struct sockaddr_in dest_addr;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket() error");
+		//perror("socket() error");
         return -1;  
 	}
 
@@ -95,7 +80,7 @@ int epoll_socket_connect(int port, char *host) {
 	struct sockaddr_in dest_addr;
     struct timeval *time;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket() error");
+		//perror("socket() error");
         return -1;  
 	}
 	memset(&dest_addr, 0, sizeof(dest_addr));
@@ -118,7 +103,7 @@ int epoll_socket_connect(int port, char *host) {
     nfds = connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     nfds = epoll_wait(epollfd, events, 2, 100);
         if (nfds == -1) {
-            perror("epoll_wait()");
+            //perror("epoll_wait()");
             ret = -1;
         } else if (nfds > 0){
             if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *)&len) < 0) {
@@ -139,4 +124,3 @@ int epoll_socket_connect(int port, char *host) {
     return ret;
 }
 
-#endif

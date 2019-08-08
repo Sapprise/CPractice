@@ -15,8 +15,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include "sock.h"
-#include "2xxx_practice.h"
+#include "my_sock.h"
+#include "my_ip_infor.h"
 
 #define Length 1024
 #define SHORT 512
