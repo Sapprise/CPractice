@@ -108,7 +108,7 @@ void *fasong() {
 int main(int argc, char *argv[]) {
 	struct passwd *pwd;
     pwd = getpwuid(getuid());	
-	char ip_addr[20] = "192.168.1.108";
+	char ip_addr[20] = "192.168.1.112";
 	int port = 8888;
     char username[20] = {0};
     strcpy(username, pwd->pw_name);

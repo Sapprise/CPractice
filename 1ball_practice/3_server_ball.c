@@ -166,7 +166,7 @@ void *fasong(void *str) {
 
 
 int main() {
-        char ip_addr[20] = "192.168.1.108";
+        char ip_addr[20] = "192.168.1.112";
         int listen_sock = startup(ip_addr, 8888);
         struct sockaddr_in client;
         socklen_t len = sizeof(client);
